@@ -1,0 +1,14 @@
+{
+  "name": "@dopplerhq/mcp-server",
+  "version": "0.0.0",
+  "files": [
+    "package.json"
+  ],
+  "scripts": {},
+  "publishConfig": {
+    "provenance": true
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  }
+}

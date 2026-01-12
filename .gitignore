@@ -1,1 +1,7 @@
 node_modules
+dist
+doppler-openapi.json
+
+# pnpm
+.pnpm-store
+package-lock.json

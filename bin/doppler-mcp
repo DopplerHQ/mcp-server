@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+
+import path from "path";
+import { spawn } from "child_process";
+import { fileURLToPath } from "url";
+import fs from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const entryPoint = path.join(__dirname, "..", "dist", "index.js");
+
+// Check if the compiled version exists
+if (!fs.existsSync(entryPoint)) {
+  console.error("Error: Compiled JavaScript not found.");
+  console.error(
+    'Please run "npm run build" first, or use "npm run dev" for development.',
+  );
+  process.exit(1);
+}
+
+// Forward all arguments and spawn the main process
+const child = spawn("node", [entryPoint, ...process.argv.slice(2)], {
+  stdio: "inherit",
+});
+
+// Forward exit codes
+child.on("exit", (code) => {
+  process.exit(code);
+});
+
+// Handle process signals
+process.on("SIGINT", () => {
+  if (child.kill) {
+    child.kill("SIGINT");
+  }
+});
+
+process.on("SIGTERM", () => {
+  if (child.kill) {
+    child.kill("SIGTERM");
+  }
+});

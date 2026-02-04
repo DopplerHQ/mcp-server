@@ -15,8 +15,7 @@
     "dev": "tsx --esm src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "test:watch": "vitest"
   },
   "files": [
     "dist/",

@@ -6,7 +6,7 @@
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "doppler-mcp": "./bin/doppler-mcp"
+    "doppler-mcp": "bin/doppler-mcp"
   },
   "scripts": {
     "fetch-openapi": "curl -s https://docs.doppler.com/openapi/core.json -o doppler-openapi.json",
@@ -15,8 +15,7 @@
     "dev": "tsx --esm src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "prepublishOnly": "npm run build"
+    "test:watch": "vitest"
   },
   "files": [
     "dist/",

@@ -1,9 +1,9 @@
 name: Publish Package
 
 on:
-#   push:
-#     tags:
-#       - 'v*'
+  push:
+    tags:
+      - 'v*'
 
 permissions:
   id-token: write # Required for OIDC publishing
@@ -18,3 +18,13 @@ jobs:
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
+      - name: Set version from tag
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          npm pkg set version="$VERSION"
+          npm pkg set private=false --json
+      - run: npm ci
+      - run: npm run build
+      - name: Verify startup
+        run: node dist/index.js --help
+      - run: npm publish --provenance

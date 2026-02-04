@@ -235,3 +235,9 @@ pnpm run build
 # Run locally
 DOPPLER_TOKEN=dp.xxx pnpm start
 ```
+
+## Branch and Release Flow
+
+New work should branch from main and target main in PRs.
+
+To release, push a tag in the format `vX.X.X` following semantic versioning. This triggers the publish workflow which builds and publishes to NPM.

@@ -11,7 +11,7 @@ export type TokenType =
   | "unknown";
 
 interface DopplerConfig {
-  token: string;
+  token: string | null;
   baseUrl: string;
 }
 
@@ -64,35 +64,38 @@ const VERSION = getPackageVersion();
 export class AuthManager {
   private config: DopplerConfig;
 
-  constructor() {
-    this.config = this.loadConfig();
-  }
+  constructor(token?: string, baseUrl?: string) {
+    this.config = {
+      token: token ?? null,
+      baseUrl: baseUrl || process.env.DOPPLER_BASE_URL || "https://api.doppler.com",
+    };
 
-  private loadConfig(): DopplerConfig {
-    const token = process.env.DOPPLER_TOKEN;
-
-    if (!token) {
-      throw new Error(
-        "DOPPLER_TOKEN environment variable is required. " +
-          "Please set it to your Doppler API token.",
-      );
-    }
-
-    // Validate token format (Doppler tokens typically start with 'dp.')
-    if (!token.startsWith("dp.")) {
+    if (this.config.token && !this.config.token.startsWith("dp.")) {
       console.warn(
-        "Warning: DOPPLER_TOKEN does not appear to be a valid Doppler token format. " +
+        "Warning: Token does not appear to be a valid Doppler token format. " +
           'Valid tokens typically start with "dp."',
       );
     }
+  }
 
-    return {
-      token,
-      baseUrl: process.env.DOPPLER_BASE_URL || "https://api.doppler.com",
-    };
+  public getToken(): string | null {
+    return this.config.token;
+  }
+
+  public setToken(token: string): void {
+    if (!token.startsWith("dp.")) {
+      console.warn(
+        "Warning: Token does not appear to be a valid Doppler token format. " +
+          'Valid tokens typically start with "dp."',
+      );
+    }
+    this.config.token = token;
   }
 
   public getAuthHeaders(): Record<string, string> {
+    if (!this.config.token) {
+      throw new Error("Not authenticated. Token has not been set.");
+    }
     return {
       Authorization: `Bearer ${this.config.token}`,
       "Content-Type": "application/json",
@@ -104,15 +107,13 @@ export class AuthManager {
     return this.config.baseUrl;
   }
 
-  public static validateEnvironment(): { valid: boolean; errors: string[] } {
+  public static validateToken(token: string): { valid: boolean; errors: string[] } {
     const errors: string[] = [];
 
-    if (!process.env.DOPPLER_TOKEN) {
-      errors.push("DOPPLER_TOKEN environment variable is required");
-    } else if (!process.env.DOPPLER_TOKEN.startsWith("dp.")) {
-      errors.push(
-        "DOPPLER_TOKEN does not appear to be a valid Doppler token format",
-      );
+    if (!token) {
+      errors.push("Token is empty");
+    } else if (!token.startsWith("dp.")) {
+      errors.push("Token does not appear to be a valid Doppler token format");
     }
 
     return {
@@ -121,20 +122,4 @@ export class AuthManager {
     };
   }
 
-  public static getSetupInstructions(): string {
-    return `
-To use this MCP server, you need to set the DOPPLER_TOKEN environment variable:
-
-1. Get your Doppler API token from: https://dashboard.doppler.com/access-tokens
-2. Set the environment variable:
-   export DOPPLER_TOKEN=dp.your-token-here
-3. Run the MCP server:
-   npx @dopplerhq/mcp-server
-
-Example:
-  DOPPLER_TOKEN=dp.your-token-here npx @dopplerhq/mcp-server
-
-For more information, visit: https://docs.doppler.com/reference/api
-    `;
-  }
 }

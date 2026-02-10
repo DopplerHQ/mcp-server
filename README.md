@@ -4,7 +4,28 @@ MCP (Model Context Protocol) server that provides AI assistants with access to t
 
 ## Quick Start
 
-Add to your MCP client configuration (e.g., Claude Desktop):
+**1. Authenticate:**
+
+```bash
+npx @dopplerhq/mcp-server login
+```
+
+**2. Add to your MCP client configuration (e.g., Claude Desktop):**
+
+```json
+{
+  "mcpServers": {
+    "doppler": {
+      "command": "npx",
+      "args": ["-y", "@dopplerhq/mcp-server"]
+    }
+  }
+}
+```
+
+### With Service Token
+
+Alternatively, use a service token instead of logging in:
 
 ```json
 {
@@ -20,60 +41,16 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 }
 ```
 
-See [Service Tokens](https://docs.doppler.com/docs/service-tokens) to create a token.
+See [Service Tokens](https://docs.doppler.com/docs/service-tokens) to create a config-scoped token.
 
-### Alternative: CLI Authentication (No Token in Config)
+## Commands
 
-If you have the [Doppler CLI](https://docs.doppler.com/docs/cli) installed, you can use your CLI session instead of a service token. This keeps credentials out of your config file entirely.
-
-**Prerequisites:**
-
-1. Install the Doppler CLI
-2. Run `doppler login` (creates a global/root session stored in your OS keychain)
-3. Create a Doppler project to store your `DOPPLER_TOKEN` for the MCP server
-
-**Configuration:**
-
-```json
-{
-  "mcpServers": {
-    "doppler": {
-      "command": "doppler",
-      "args": [
-        "run",
-        "--project",
-        "mcp-server-tokens",
-        "--config",
-        "dev",
-        "--",
-        "npx",
-        "-y",
-        "@dopplerhq/mcp-server",
-        "--project",
-        "my-app",
-        "--read-only"
-      ]
-    }
-  }
-}
+```
+login              Authenticate with Doppler (interactive)
+logout             Clear cached auth credentials
 ```
 
-**How it works:**
-
-- `doppler run --project mcp-server-tokens --config dev` fetches secrets (including `DOPPLER_TOKEN`) from the specified Doppler project and injects them as environment variables
-- The MCP server receives `DOPPLER_TOKEN` and uses it to access the Doppler API
-- `--project my-app --read-only` on the MCP server scopes what the LLM can access
-
-**Two levels of scoping:**
-
-| Level                            | Controls                              | Example                                                    |
-| -------------------------------- | ------------------------------------- | ---------------------------------------------------------- |
-| `doppler run --project/--config` | Which token the MCP server uses       | `mcp-server-tokens/dev` contains `DOPPLER_TOKEN=dp.st.xxx` |
-| MCP server `--project/--config`  | What the LLM can access via the token | Restrict to `my-app/production`                            |
-
-This pattern is ideal for local development where you don't want any tokens in config files.
-
-## CLI Options
+## Options
 
 ```
 --read-only        Only expose read operations (GET endpoints)
@@ -92,8 +69,7 @@ This pattern is ideal for local development where you don't want any tokens in c
   "mcpServers": {
     "doppler": {
       "command": "npx",
-      "args": ["-y", "@dopplerhq/mcp-server", "--read-only"],
-      "env": { "DOPPLER_TOKEN": "dp.pt.xxx" }
+      "args": ["-y", "@dopplerhq/mcp-server", "--read-only"]
     }
   }
 }
@@ -106,8 +82,7 @@ This pattern is ideal for local development where you don't want any tokens in c
   "mcpServers": {
     "doppler": {
       "command": "npx",
-      "args": ["-y", "@dopplerhq/mcp-server", "--project", "my-app"],
-      "env": { "DOPPLER_TOKEN": "dp.pt.xxx" }
+      "args": ["-y", "@dopplerhq/mcp-server", "--project", "my-app"]
     }
   }
 }
@@ -127,8 +102,7 @@ This pattern is ideal for local development where you don't want any tokens in c
         "my-app",
         "--config",
         "production"
-      ],
-      "env": { "DOPPLER_TOKEN": "dp.pt.xxx" }
+      ]
     }
   }
 }

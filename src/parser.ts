@@ -241,10 +241,29 @@ export class OpenAPIParser {
 
   private convertSchemaToZod(schema: SchemaObject): z.ZodSchema<any> {
     if (schema.enum) {
-      const cleanedEnum = schema.enum.map((val: any) =>
-        typeof val === "string" ? val.replace(/^"|"$/g, "") : val,
+      const allStrings = schema.enum.every(
+        (val: any) => typeof val === "string",
       );
-      return z.enum(cleanedEnum as [string, ...string[]]);
+      if (allStrings) {
+        const cleanedEnum = schema.enum.map((val: string) =>
+          val.replace(/^"|"$/g, ""),
+        );
+        return z.enum(cleanedEnum as [string, ...string[]]);
+      }
+      // Non-string enums use z.union of literals
+      if (schema.enum.length === 0) {
+        return z.never();
+      }
+      if (schema.enum.length === 1) {
+        return z.literal(schema.enum[0]);
+      }
+      return z.union(
+        schema.enum.map((val: any) => z.literal(val)) as [
+          z.ZodLiteral<any>,
+          z.ZodLiteral<any>,
+          ...z.ZodLiteral<any>[],
+        ],
+      );
     }
 
     switch (schema.type) {

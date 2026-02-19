@@ -14,8 +14,8 @@ export class DopplerClient {
   private authManager: AuthManager;
   private baseUrl: string;
 
-  constructor() {
-    this.authManager = new AuthManager();
+  constructor(authManager: AuthManager) {
+    this.authManager = authManager;
     this.baseUrl = this.authManager.getBaseUrl();
   }
 

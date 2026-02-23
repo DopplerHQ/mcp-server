@@ -20,7 +20,8 @@
   "files": [
     "dist/",
     "bin/",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "mcp",
@@ -30,7 +31,7 @@
     "openapi",
     "model-context-protocol"
   ],
-  "license": "MIT",
+  "license": "Apache-2.0",
   "publishConfig": {
     "provenance": true
   },

@@ -31,4 +31,4 @@ jobs:
       - run: pnpm run build
       - name: Verify startup
         run: node dist/index.js --help
-      - run: npm publish --provenance
+      - run: npm publish --provenance --access public

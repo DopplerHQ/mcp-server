@@ -2,6 +2,9 @@
 
 MCP (Model Context Protocol) server that provides AI assistants with access to the Doppler API for secrets management.
 
+> [!IMPORTANT]
+> The Doppler MCP Server is experimental and intended for development, testing, and evaluation purposes. Because outputs are non-deterministic and vary with the connected model, query, and server configuration, always use a token scoped only to the actions, projects, and environments you intend to allow, and review agentic output for alignment with your security and compliance requirements.
+
 ## Quick Start
 
 **1. Authenticate:**

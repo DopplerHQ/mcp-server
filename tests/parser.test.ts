@@ -402,7 +402,7 @@ describe("OpenAPIParser", () => {
       expect(names.length).toBe(2); // No duplicates
     });
 
-    it("truncates long names to 64 characters", () => {
+    it("truncates long names to 50 characters", () => {
       const spec = createMockSpec({
         "/v3/workplace/service_accounts/service_account/{sa}/identities/identity/{id}":
           {
@@ -431,7 +431,7 @@ describe("OpenAPIParser", () => {
       const parser = new OpenAPIParser(spec);
       const tools = parser.parseToTools();
 
-      expect(tools[0].name.length).toBeLessThanOrEqual(64);
+      expect(tools[0].name.length).toBeLessThanOrEqual(50);
       expect(tools[0].name).not.toMatch(/_$/); // Shouldn't end with underscore
     });
   });

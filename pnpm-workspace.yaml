@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild@0.28.0: true
+  tldjs@2.3.2: true
+blockExoticSubdeps: true
+minimumReleaseAge: 4320 # 3 days
+trustPolicy: no-downgrade
+trustPolicyIgnoreAfter: 525600 # One year. This is useful for some packages that began publishing new major versions with provenance attestations, but backport security fixes to versions without.

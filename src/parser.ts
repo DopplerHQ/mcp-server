@@ -1,11 +1,5 @@
 import { z } from "zod";
-import {
-  OpenAPISpec,
-  Operation,
-  Parameter,
-  SchemaObject,
-  DopplerTool,
-} from "./types.js";
+import { OpenAPISpec, Operation, SchemaObject, DopplerTool } from "./types.js";
 
 export class OpenAPIParser {
   private spec: OpenAPISpec;
@@ -70,10 +64,31 @@ export class OpenAPIParser {
     path: string,
     operationId: string,
   ): string {
+    let fullName: string;
     if (this.isCleanOperationId(operationId)) {
-      return this.sanitizeOperationId(operationId);
+      fullName = this.sanitizeOperationId(operationId);
+    } else {
+      fullName = this.generateFromPath(method, path);
     }
-    return this.generateFromPath(method, path);
+    // Maps name components in the form `${collection}_${resource}` to just `${resource}`, to reduce verbosity.
+    const collectionResourceNames: Record<string, string> = {
+      change_request_units: "unit",
+      change_requests: "change_request",
+      identities: "identity",
+      integrations: "integration",
+      service_accounts: "service_account",
+      change_request_policies: "change_request_policy",
+      groups: "group",
+      roles: "role",
+      webhooks: "webhook",
+    };
+    for (const [collection, resource] of Object.entries(
+      collectionResourceNames,
+    )) {
+      fullName = fullName.replace(`${collection}_${resource}`, resource);
+    }
+    // MCP tool names cannot be more than 64 characters, but some clients add a prefix. We trim to 50 to be safe.
+    return fullName.substring(0, 50);
   }
 
   /**
@@ -105,13 +120,6 @@ export class OpenAPIParser {
       .replace(/_+/g, "_")
       // Remove trailing underscores
       .replace(/_$/, "");
-
-    // MCP tool names must be <= 64 characters
-    if (name.length > 64) {
-      name = name.substring(0, 64);
-      // Don't end on an underscore
-      name = name.replace(/_$/, "");
-    }
 
     return name;
   }
@@ -195,11 +203,6 @@ export class OpenAPIParser {
 
     // 7. Clean up
     name = name.replace(/_+/g, "_").replace(/^_|_$/g, "");
-
-    // 8. Truncate to 64 chars (MCP limit)
-    if (name.length > 64) {
-      name = name.substring(0, 64).replace(/_$/, "");
-    }
 
     return name;
   }

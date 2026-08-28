@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "doppler-dev": {
+      "command": "pnpm",
+      "args": ["dev", "--verbose"]
+    }
+  }
+}

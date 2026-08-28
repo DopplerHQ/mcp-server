@@ -1,7 +1,9 @@
 allowBuilds:
-  esbuild@0.28.0: true
+  esbuild@0.28.2: true
   tldjs@2.3.2: true
 blockExoticSubdeps: true
 minimumReleaseAge: 4320 # 3 days
+overrides:
+  fast-uri@>=3.0.0 <3.1.5: ^3.1.5
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 525600 # One year. This is useful for some packages that began publishing new major versions with provenance attestations, but backport security fixes to versions without.

@@ -43,14 +43,14 @@
   },
   "dependencies": {
     "@napi-rs/keyring": "^1.3.0",
-    "fastmcp": "^4.16.0",
-    "zod": "^3.22.0"
+    "fastmcp": "^4.16.8",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0",
-    "prettier": "^3.6.2",
+    "@types/node": "^22.20.1",
+    "prettier": "^3.8.3",
     "tsx": "^4.23.12",
-    "typescript": "^6.0.0",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   },
   "engines": {

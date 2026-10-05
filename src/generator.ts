@@ -2,6 +2,7 @@ import { DopplerTool, Parameter } from "./types.js";
 import { DopplerClient, APIError } from "./client.js";
 import { type ScopeOptions } from "./scope.js";
 import { ScopeViolationError } from "./errors.js";
+import { withPortableJsonSchema } from "./portable-schema.js";
 
 export class ToolGenerator {
   private client: DopplerClient;
@@ -20,7 +21,7 @@ export class ToolGenerator {
     return {
       name: dopplerTool.name,
       description: dopplerTool.description,
-      parameters: dopplerTool.inputSchema,
+      parameters: withPortableJsonSchema(dopplerTool.inputSchema),
       execute: async (input: any) => {
         try {
           const result = await this.executeTool(dopplerTool, input);

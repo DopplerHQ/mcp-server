@@ -547,6 +547,15 @@ export class OpenAPIParser {
     }
   }
 
+  /**
+   * An object with no declared properties (e.g. a JSON key file). Advertised as
+   * `additionalProperties: true` rather than `z.record(z.any())`'s `{}`, which some MCP
+   * clients reject or mishandle even though it means the same thing.
+   */
+  private freeFormObject(): z.ZodSchema<any> {
+    return z.object({}).passthrough();
+  }
+
   private convertResolvedSchema(schema: SchemaObject): z.ZodSchema<any> {
     // OpenAPI 3.1 type arrays, e.g. ["string", "null"]
     if (Array.isArray(schema.type)) {
@@ -610,7 +619,7 @@ export class OpenAPIParser {
     switch (schema.type) {
       case "string":
         if (schema.format === "json") {
-          return z.record(z.any());
+          return this.freeFormObject();
         }
         let stringSchema = z.string();
         if (schema.format === "email") {
@@ -670,7 +679,7 @@ export class OpenAPIParser {
         ) {
           return z.record(this.convertSchemaToZod(schema.additionalProperties));
         }
-        return z.record(z.any());
+        return this.freeFormObject();
 
       default:
         return z.any();

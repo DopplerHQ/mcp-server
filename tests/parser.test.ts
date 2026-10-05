@@ -1114,6 +1114,25 @@ describe("OpenAPIParser", () => {
       }
     });
 
+    it("accepts any keys on objects with no declared properties", () => {
+      const freeForm = new OpenAPIParser(
+        specWithQueryParam({ type: "object" }),
+      ).parseToTools();
+      const jsonString = new OpenAPIParser(
+        specWithQueryParam({ type: "string", format: "json" }),
+      ).parseToTools();
+
+      for (const tools of [freeForm, jsonString]) {
+        expect(
+          tools[0].inputSchema.safeParse({ value: { any: "key", n: 1 } })
+            .success,
+        ).toBe(true);
+        expect(
+          tools[0].inputSchema.safeParse({ value: "not an object" }).success,
+        ).toBe(false);
+      }
+    });
+
     it("uses additionalProperties as the value schema of a map-like object", () => {
       const spec = specWithQueryParam({
         type: "object",

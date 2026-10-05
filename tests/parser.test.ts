@@ -1271,6 +1271,37 @@ describe("OpenAPIParser", () => {
       expect(sentences.description!.endsWith("ok.")).toBe(true);
     });
 
+    it("explains how to pick an option when variant descriptions differ", () => {
+      const variant = (type: string, dataProp: string) => ({
+        title: type,
+        type: "object",
+        properties: {
+          type: { type: "string", enum: [type] },
+          data: {
+            type: "object",
+            description: `Data for ${type}.`,
+            required: [dataProp],
+            properties: { [dataProp]: { type: "string" } },
+          },
+        },
+      });
+      const tool = toolFor({
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                oneOf: [variant("a", "x"), variant("b", "y")],
+              },
+            },
+          },
+        },
+      });
+
+      expect(fieldDescription(tool, "data")).toBe(
+        "The fields depend on `type`. Each option is labeled with the variants it applies to.",
+      );
+    });
+
     it("describes a merged variant field only when every variant agrees", () => {
       const variant = (type: string, nameDescription: string) => ({
         type: "object",

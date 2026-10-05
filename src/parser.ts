@@ -428,8 +428,10 @@ export class OpenAPIParser {
       }
     }
 
+    const selector = this.findVariantSelector(byName, flat.length);
     const fields: Record<string, z.ZodSchema<any>> = {};
     for (const [name, entries] of byName) {
+      let isUnion = false;
       // Mixed enum and non-enum variants for the same property fall back to a union of the shapes.
       const enumValues = this.collectStringValues(entries.map((e) => e.schema));
       let zodSchema: z.ZodSchema<any>;
@@ -451,6 +453,7 @@ export class OpenAPIParser {
           }
           groups.set(key, group);
         }
+        isUnion = groups.size > 1;
         zodSchema = this.unionOf(
           [...groups.values()].map(({ schema, titles }) =>
             titles.length > 0
@@ -461,12 +464,45 @@ export class OpenAPIParser {
       }
       const requiredEverywhere = flat.every((v) => v.required?.includes(name));
       const descriptions = new Set(entries.map((e) => e.schema.description));
-      if (descriptions.size === 1) {
+      if (descriptions.size === 1 && entries[0].schema.description) {
         zodSchema = this.describe(zodSchema, entries[0].schema.description);
+      } else if (isUnion) {
+        // The variants describe this field differently, so say how to pick an option instead.
+        zodSchema = this.describe(
+          zodSchema,
+          selector
+            ? `The fields depend on \`${selector}\`. Each option is labeled with the variants it applies to.`
+            : "The fields depend on the variant. Each option is labeled with the variants it applies to.",
+        );
       }
       fields[name] = requiredEverywhere ? zodSchema : zodSchema.optional();
     }
     return fields;
+  }
+
+  /**
+   * The property that selects the variant (e.g. `type`): present in every variant with string values that
+   * no other variant uses. Returns undefined unless exactly one property fits.
+   */
+  private findVariantSelector(
+    byName: Map<string, Array<{ schema: SchemaObject }>>,
+    variantCount: number,
+  ): string | undefined {
+    const candidates = [...byName].filter(([, entries]) => {
+      if (entries.length !== variantCount) {
+        return false;
+      }
+      const seen = new Set<string>();
+      for (const { schema } of entries) {
+        const values = this.collectStringValues([schema]);
+        if (!values || values.some((v) => seen.has(v))) {
+          return false;
+        }
+        values.forEach((v) => seen.add(v));
+      }
+      return true;
+    });
+    return candidates.length === 1 ? candidates[0][0] : undefined;
   }
 
   /** Every string value a set of schemas allows through `enum`/`const`, or null if any schema isn't string-valued. */

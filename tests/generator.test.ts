@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ToolGenerator } from "../src/generator.js";
+import { OpenAPIParser } from "../src/parser.js";
 import type { DopplerTool, Parameter } from "../src/types.js";
 import { ScopeViolationError } from "../src/errors.js";
 import { z } from "zod";
@@ -363,6 +364,63 @@ describe("ToolGenerator", () => {
           extraField: "should-be-preserved",
           anotherExtra: 123,
         },
+      });
+    });
+    it("sends a merged oneOf body as the request body", async () => {
+      const client = createMockClient();
+      const generator = new ToolGenerator(client as any);
+      const variant = (type: string, dataProp: string) => ({
+        type: "object",
+        required: ["type", "name", "data"],
+        properties: {
+          type: { type: "string", enum: [type] },
+          name: { type: "string" },
+          data: {
+            type: "object",
+            required: [dataProp],
+            properties: { [dataProp]: { type: "string" } },
+          },
+        },
+      });
+      const [tool] = new OpenAPIParser({
+        openapi: "3.1.0",
+        info: { title: "Test API", version: "1.0.0" },
+        servers: [{ url: "https://api.doppler.com" }],
+        paths: {
+          "/v3/integrations": {
+            post: {
+              operationId: "integrations-create",
+              summary: "Create",
+              requestBody: {
+                content: {
+                  "application/json": {
+                    schema: {
+                      oneOf: [
+                        variant("circleci", "api_token"),
+                        variant("render", "api_key"),
+                      ],
+                    },
+                  },
+                },
+              },
+              responses: { "200": { description: "Success" } },
+            },
+          },
+        },
+      }).parseToTools();
+
+      const mcpTools = generator.generateTools([tool]);
+      await mcpTools[0].execute({
+        type: "render",
+        name: "Render",
+        data: { api_key: "key" },
+      });
+
+      expect(mockMakeRequest).toHaveBeenCalledWith({
+        method: "POST",
+        endpoint: "/v3/integrations",
+        queryParams: {},
+        body: { type: "render", name: "Render", data: { api_key: "key" } },
       });
     });
   });

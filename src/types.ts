@@ -56,7 +56,14 @@ export interface Response {
 }
 
 export interface SchemaObject {
-  type?: string;
+  // OpenAPI 3.1 allows an array of types, e.g. ["string", "null"]
+  type?: string | string[];
+  $ref?: string;
+  title?: string;
+  oneOf?: SchemaObject[];
+  anyOf?: SchemaObject[];
+  allOf?: SchemaObject[];
+  const?: any;
   properties?: Record<string, SchemaObject>;
   items?: SchemaObject;
   required?: string[];

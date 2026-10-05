@@ -65,6 +65,8 @@ export interface SchemaObject {
   allOf?: SchemaObject[];
   const?: any;
   properties?: Record<string, SchemaObject>;
+  // A schema for the values of a map-like object, or true/false to allow/forbid extra keys
+  additionalProperties?: SchemaObject | boolean;
   items?: SchemaObject;
   required?: string[];
   enum?: any[];

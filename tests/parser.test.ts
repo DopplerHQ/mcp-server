@@ -213,7 +213,7 @@ describe("OpenAPIParser", () => {
       ).toHaveProperty("name");
     });
 
-    it("uses summary as description, falling back to description field", () => {
+    it("uses the description, falling back to summary and then method and path", () => {
       const spec = createMockSpec({
         "/v3/endpoint1": {
           get: {
@@ -227,7 +227,14 @@ describe("OpenAPIParser", () => {
         "/v3/endpoint2": {
           get: {
             operationId: "endpoint2-get",
-            description: "Only description",
+            summary: "Only summary",
+            parameters: [],
+            responses: { "200": { description: "Success" } },
+          },
+        },
+        "/v3/endpoint3": {
+          get: {
+            operationId: "endpoint3-get",
             parameters: [],
             responses: { "200": { description: "Success" } },
           },
@@ -238,10 +245,13 @@ describe("OpenAPIParser", () => {
       const tools = parser.parseToTools();
 
       expect(tools.find((t) => t.name === "endpoint1_get")?.description).toBe(
-        "Short summary",
+        "Longer description",
       );
       expect(tools.find((t) => t.name === "endpoint2_get")?.description).toBe(
-        "Only description",
+        "Only summary",
+      );
+      expect(tools.find((t) => t.name === "endpoint3_get")?.description).toBe(
+        "GET /v3/endpoint3",
       );
     });
   });
@@ -1104,6 +1114,21 @@ describe("OpenAPIParser", () => {
       }
     });
 
+    it("uses additionalProperties as the value schema of a map-like object", () => {
+      const spec = specWithQueryParam({
+        type: "object",
+        additionalProperties: { type: ["string", "null"] },
+      });
+
+      const parser = new OpenAPIParser(spec);
+      const tools = parser.parseToTools();
+      const accepts = (value: unknown) =>
+        tools[0].inputSchema.safeParse({ value }).success;
+
+      expect(accepts({ STRIPE: "sk_test", OLD_KEY: null })).toBe(true);
+      expect(accepts({ STRIPE: 5 })).toBe(false);
+    });
+
     it("doesn't loop forever on a self-referencing $ref", () => {
       const spec = specWithBody(
         { $ref: "#/components/schemas/Loop" },
@@ -1148,6 +1173,110 @@ describe("OpenAPIParser", () => {
       expect(
         tools[0].inputSchema.safeParse({ node: { children: [] } }).success,
       ).toBe(false);
+    });
+  });
+
+  describe("descriptions", () => {
+    const toolFor = (operation: Record<string, any>) => {
+      const spec = createMockSpec({
+        "/v3/things": {
+          post: {
+            operationId: "things-create",
+            responses: { "200": { description: "Success" } },
+            ...operation,
+          },
+        },
+      });
+      const parser = new OpenAPIParser(spec);
+      return parser.parseToTools()[0];
+    };
+    const fieldDescription = (
+      tool: { inputSchema: z.ZodSchema<any> },
+      name: string,
+    ) => ((tool.inputSchema as any).shape[name] as z.ZodTypeAny).description;
+
+    it("describes parameters and body properties", () => {
+      const tool = toolFor({
+        parameters: [
+          {
+            name: "project",
+            in: "query",
+            schema: { type: "string" },
+            description: "The project's slug.",
+          },
+        ],
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                required: ["expire_at"],
+                properties: {
+                  expire_at: {
+                    type: "integer",
+                    description: "Unix timestamp in seconds.",
+                  },
+                  name: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      expect(fieldDescription(tool, "project")).toBe("The project's slug.");
+      expect(fieldDescription(tool, "expire_at")).toBe(
+        "Unix timestamp in seconds.",
+      );
+      expect(fieldDescription(tool, "name")).toBeUndefined();
+    });
+
+    it("turns Markdown links into their text", () => {
+      const tool = toolFor({
+        description:
+          "Create a thing. See [Get Options](https://docs.doppler.com/reference/get-options) for IDs.",
+      });
+
+      expect(tool.description).toBe("Create a thing. See Get Options for IDs.");
+    });
+
+    it("cuts long descriptions at a paragraph, then a sentence, boundary", () => {
+      const sentence = "This sentence is exactly fifty characters long ok. ";
+      const paragraphs = toolFor({
+        description: `${"a".repeat(500)}\n\n${"b".repeat(500)}`,
+      });
+      const sentences = toolFor({ description: sentence.repeat(30) });
+
+      expect(paragraphs.description).toBe("a".repeat(500));
+      expect(sentences.description!.length).toBeLessThanOrEqual(800);
+      expect(sentences.description!.endsWith("ok.")).toBe(true);
+    });
+
+    it("describes a merged variant field only when every variant agrees", () => {
+      const variant = (type: string, nameDescription: string) => ({
+        type: "object",
+        properties: {
+          type: { type: "string", enum: [type], description: "The type." },
+          name: { type: "string", description: nameDescription },
+        },
+      });
+      const tool = toolFor({
+        requestBody: {
+          content: {
+            "application/json": {
+              schema: {
+                oneOf: [
+                  variant("a", "Name of an A."),
+                  variant("b", "Name of a B."),
+                ],
+              },
+            },
+          },
+        },
+      });
+
+      expect(fieldDescription(tool, "type")).toBe("The type.");
+      expect(fieldDescription(tool, "name")).toBeUndefined();
     });
   });
 });

@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { OpenAPISpec, Operation, SchemaObject, DopplerTool } from "./types.js";
 
+// Descriptions are sent to the model with every tools/list, so long ones are cut at a paragraph or sentence boundary.
+const TOOL_DESCRIPTION_MAX = 800;
+const FIELD_DESCRIPTION_MAX = 300;
+
 export class OpenAPIParser {
   private spec: OpenAPISpec;
   /**
@@ -40,9 +44,10 @@ export class OpenAPIParser {
 
       return {
         name: this.generateToolName(method, path, operation.operationId),
+        // Prefer the description: summaries are often a single word ("List"), which tells the model nothing.
         description:
+          this.toPlainText(operation.description, TOOL_DESCRIPTION_MAX) ||
           operation.summary ||
-          operation.description ||
           `${method.toUpperCase()} ${path}`,
         inputSchema,
         method: method.toUpperCase(),
@@ -57,6 +62,45 @@ export class OpenAPIParser {
       );
       return null;
     }
+  }
+
+  private describe(
+    schema: z.ZodSchema<any>,
+    description: string | undefined,
+  ): z.ZodSchema<any> {
+    const text = this.toPlainText(description, FIELD_DESCRIPTION_MAX);
+    return text ? schema.describe(text) : schema;
+  }
+
+  /**
+   * Turn an OpenAPI Markdown description into compact text for the model: Markdown links become their link
+   * text, and text longer than `max` is cut at the last paragraph or sentence boundary that fits.
+   */
+  private toPlainText(
+    markdown: string | undefined,
+    max: number,
+  ): string | undefined {
+    const text = markdown
+      ?.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    if (!text || text.length <= max) {
+      return text || undefined;
+    }
+    const head = text.slice(0, max);
+    const paragraphEnd = head.lastIndexOf("\n\n");
+    if (paragraphEnd > max / 2) {
+      return head.slice(0, paragraphEnd).trimEnd();
+    }
+    const sentenceEnd = Math.max(
+      head.lastIndexOf(". "),
+      head.lastIndexOf(".\n"),
+    );
+    if (sentenceEnd > max / 2) {
+      return head.slice(0, sentenceEnd + 1);
+    }
+    return `${head.trimEnd()}…`;
   }
 
   /**
@@ -217,7 +261,10 @@ export class OpenAPIParser {
 
     if (operation.parameters) {
       for (const param of operation.parameters) {
-        const zodSchema = this.convertSchemaToZod(param.schema);
+        const zodSchema = this.describe(
+          this.convertSchemaToZod(param.schema),
+          param.description ?? param.schema?.description,
+        );
         schemaFields[param.name] = param.required
           ? zodSchema
           : zodSchema.optional();
@@ -251,7 +298,10 @@ export class OpenAPIParser {
           for (const [propName, propSchema] of Object.entries(
             bodySchema.properties,
           )) {
-            const zodSchema = this.convertSchemaToZod(propSchema);
+            const zodSchema = this.describe(
+              this.convertSchemaToZod(propSchema),
+              this.resolveSchema(propSchema).description,
+            );
             const isRequired = bodySchema.required?.includes(propName) ?? false;
             schemaFields[propName] = isRequired
               ? zodSchema
@@ -410,6 +460,10 @@ export class OpenAPIParser {
         );
       }
       const requiredEverywhere = flat.every((v) => v.required?.includes(name));
+      const descriptions = new Set(entries.map((e) => e.schema.description));
+      if (descriptions.size === 1) {
+        zodSchema = this.describe(zodSchema, entries[0].schema.description);
+      }
       fields[name] = requiredEverywhere ? zodSchema : zodSchema.optional();
     }
     return fields;
@@ -608,6 +662,13 @@ export class OpenAPIParser {
               : zodSchema.optional();
           }
           return z.object(objectFields).passthrough();
+        }
+        // A map-like object, e.g. secret names to values: keep the value schema when the spec gives one.
+        if (
+          schema.additionalProperties &&
+          typeof schema.additionalProperties === "object"
+        ) {
+          return z.record(this.convertSchemaToZod(schema.additionalProperties));
         }
         return z.record(z.any());
 
